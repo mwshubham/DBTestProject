@@ -1,23 +1,84 @@
 package com.example.dbtestproject
 
+import android.content.ContentValues
 import android.os.Bundle
+import android.provider.BaseColumns
 import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlin.random.Random
 
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var dbHelper: FeedReaderDbHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
 
+        dbHelper = FeedReaderDbHelper(this)
+        insert()
         fab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                 .setAction("Action", null).show()
+
+            val db = dbHelper.readableDatabase
+
+// Define a projection that specifies which columns from the database
+// you will actually use after this query.
+            val projection = arrayOf(
+                BaseColumns._ID,
+                FeedReaderContract.FeedEntry.COLUMN_NAME_TITLE,
+                FeedReaderContract.FeedEntry.COLUMN_NAME_SUBTITLE
+            )
+
+// Filter results WHERE "title" = 'My Title'
+            val selection = "${FeedReaderContract.FeedEntry.COLUMN_NAME_TITLE} = ?"
+            val selectionArgs = arrayOf("My Title")
+
+// How you want the results sorted in the resulting Cursor
+            val sortOrder = "${FeedReaderContract.FeedEntry.COLUMN_NAME_SUBTITLE} DESC"
+
+            val cursor = db.query(
+                FeedReaderContract.FeedEntry.TABLE_NAME,   // The table to query
+                projection,             // The array of columns to return (pass null to get all)
+                selection,              // The columns for the WHERE clause
+                selectionArgs,          // The values for the WHERE clause
+                null,                   // don't group the rows
+                null,                   // don't filter by row groups
+                sortOrder               // The sort order
+            )
+
+            cursor.use {
+                it ?: return@setOnClickListener
+                if (it.count >= 0) {
+                    it.moveToFirst()
+                    while (cursor.moveToNext()) {
+                        cursor.moveToNext()
+                        it.getString(0)
+                    }
+
+                }
+
+            }
         }
+    }
+
+    private fun insert() {
+        // Gets the data repository in write mode
+        val db = dbHelper.writableDatabase
+
+// Create a new map of values, where column names are the keys
+        val values = ContentValues().apply {
+            put(FeedReaderContract.FeedEntry.COLUMN_NAME_TITLE, "Title: " + Random(100))
+            put(FeedReaderContract.FeedEntry.COLUMN_NAME_SUBTITLE, "Subtitle: " + Random(100))
+        }
+
+// Insert the new row, returning the primary key value of the new row
+        val newRowId = db?.insert(FeedReaderContract.FeedEntry.TABLE_NAME, null, values)
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
